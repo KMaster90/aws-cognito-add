@@ -23,9 +23,18 @@ export class CompareService {
     this.dataIsLoading.next(true);
     this.dataEdited.next(false);
     this.userData = data;
-      this.http.post('https://API_ID.execute-api.REGION.amazonaws.com/dev/', data, {
-        headers: new Headers({'Authorization': 'XX'})
-      })
+    this.authService.getAuthenticatedUser().getSession((err, session) => {
+      if (err) {
+        console.log('ERROR', err);
+        return;
+      }
+      this.http.post(
+        'https://6sq1jt2kzj.execute-api.us-east-1.amazonaws.com/dev/compare-yourself',
+        data,
+        {
+          headers: new Headers({'Authorization': session.getIdToken().getJwtToken()})
+        }
+      )
         .subscribe(
           (result) => {
             this.dataLoadFailed.next(false);
@@ -38,51 +47,68 @@ export class CompareService {
             this.dataEdited.next(false);
           }
         );
+    });
   }
   onRetrieveData(all = true) {
     this.dataLoaded.next(null);
     this.dataLoadFailed.next(false);
-      let queryParam = '';
-      let urlParam = 'all';
-      if (!all) {
-        urlParam = 'single';
-      }
-      this.http.get('https://API_ID.execute-api.REGION.amazonaws.com/dev/' + urlParam + queryParam, {
-        headers: new Headers({'Authorization': 'XXX'})
-      })
-        .map(
-          (response: Response) => response.json()
-        )
-        .subscribe(
-          (data) => {
-            if (all) {
-              this.dataLoaded.next(data);
-            } else {
-              console.log(data);
-              if (!data) {
-                this.dataLoadFailed.next(true);
-                return;
+    this.authService.getAuthenticatedUser().getSession(
+      (err, session) => {
+        if (err) {
+          console.log('ERROR', err);
+          return;
+        }
+        const queryParam = '?accessToken=' + session.getAccessToken().getJwtToken();
+        let urlParam = 'all';
+        if (!all) {
+          urlParam = 'single';
+        }
+        this.http.get('https://6sq1jt2kzj.execute-api.us-east-1.amazonaws.com/dev/compare-yourself/' + urlParam + queryParam, {
+          headers: new Headers({'Authorization': session.getIdToken().getJwtToken()})
+        })
+          .map(
+            (response: Response) => response.json()
+          )
+          .subscribe(
+            (data) => {
+              if (all) {
+                this.dataLoaded.next(data);
+              } else {
+                console.log(data);
+                if (!data) {
+                  this.dataLoadFailed.next(true);
+                  return;
+                }
+                this.userData = data[0];
+                this.dataEdited.next(true);
               }
-              this.userData = data[0];
-              this.dataEdited.next(true);
+            },
+            (error) => {
+              this.dataLoadFailed.next(true);
+              this.dataLoaded.next(null);
             }
-          },
-          (error) => {
-            this.dataLoadFailed.next(true);
-            this.dataLoaded.next(null);
-          }
-        );
+          );
+      }
+    );
   }
   onDeleteData() {
     this.dataLoadFailed.next(false);
-      this.http.delete('https://API_ID.execute-api.REGION.amazonaws.com/dev/', {
-        headers: new Headers({'Authorization': 'XXX'})
-      })
-        .subscribe(
-          (data) => {
-            console.log(data);
-          },
-          (error) => this.dataLoadFailed.next(true)
-        );
+    this.authService.getAuthenticatedUser().getSession(
+      (err, session) => {
+        if (err) {
+          console.log('ERROR', err);
+          return;
+        }
+        const queryParam = '?accessToken=' + session.getAccessToken().getJwtToken();
+        this.http.delete('https://6sq1jt2kzj.execute-api.us-east-1.amazonaws.com/dev/compare-yourself/'+ queryParam, {
+          headers: new Headers({'Authorization': session.getIdToken().getJwtToken()})
+        })
+          .subscribe(
+            (data) => {
+              console.log(data);
+            },
+            (error) => this.dataLoadFailed.next(true)
+          );
+      });
   }
 }
